@@ -70,7 +70,17 @@ class CodeFlowController {
   }
 
   private onTextChangeEvent(event: TextDocumentChangeEvent) {
-    this.changesSinceLastUpdate += event.contentChanges.length;
+    const charsChanged = event.contentChanges.reduce(
+      (acc, contentChanges: TextDocumentContentChangeEvent) => {
+        const { rangeLength } = contentChanges;
+        const changes = rangeLength === 0 ? 1 : rangeLength;
+
+        return acc + changes;
+      },
+      0,
+    );
+
+    this.changesSinceLastUpdate += charsChanged;
   }
 
   private updateVelocity() {
