@@ -12,6 +12,7 @@ import {
 } from 'vscode';
 
 import { execSync } from 'child_process';
+import { platform } from 'process';
 
 // Biorhythm?
 export function activate(ctx: ExtensionContext) {
@@ -99,15 +100,49 @@ class CodeFlowController {
   }
 
   private getSystemVolume(): number {
-    const currentVolume = execSync(
-      "osascript -e 'output volume of (get volume settings)'",
-    ).toString();
+    let getSystemVolumeScript;
+    switch (process.platform) {
+      case 'darwin': {
+        getSystemVolumeScript =
+          "osascript -e 'output volume of (get volume settings)'";
+        break;
+      }
 
+      case 'linux': {
+        getSystemVolumeScript = 'amixer -M get Master';
+        break;
+      }
+
+      default: {
+        console.log('codeflow is not supported on this platform!');
+        return 0;
+      }
+    }
+
+    const currentVolume = execSync(getSystemVolumeScript).toString();
     return parseInt(currentVolume, 10);
   }
 
   private setSystemVolume(volume: number) {
-    execSync(`osascript -e 'set volume output volume ${volume}'`);
+    let setSystemVolumeScript;
+    switch (process.platform) {
+      case 'darwin': {
+        setSystemVolumeScript = `osascript -e 'set volume output volume ${volume}'`;
+        break;
+      }
+
+      case 'linux': {
+        setSystemVolumeScript = `amixer sset 'Master' ${volume}%`;
+        break;
+      }
+
+      default: {
+        console.log('codeflow is not supported on this platform!');
+        return 0;
+      }
+    }
+
+    execSync(setSystemVolumeScript);
   }
 
   private updateVelocity() {
