@@ -32,18 +32,12 @@ class CodeFlowController {
   private velocityUpdateTimer: NodeJS.Timer;
   private textChangeListener: Disposable;
 
-  private velocityUpdateTime = 5;
   private changesSinceLastUpdate = 0;
   private minSpeed = 0;
   private speed = this.minSpeed;
   private status = CodeFlowStatus.Pause;
 
-  private minVolume = 5;
-  private maxVolume = 25;
-
   constructor() {
-    const { velocityUpdateTime, speed } = this;
-
     if (this.statusBarItem == null) {
       this.statusBarItem = window.createStatusBarItem(StatusBarAlignment.Left);
 
@@ -82,13 +76,15 @@ class CodeFlowController {
   }
 
   private volumeFromSpeed(volume) {
+    const { minVolume, maxVolume } = workspace.getConfiguration('codeflow');
+
     // positions
-    const minP = 0;
-    const maxP = 15;
+    const minP = this.minSpeed;
+    const maxP = 15; // TODO: Should this be hard coded?
 
     // The result range
-    const minV = Math.log(this.minVolume);
-    const maxV = Math.log(this.maxVolume);
+    const minV = minVolume > 0 ? Math.log(minVolume) : 0;
+    const maxV = maxVolume > 0 ? Math.log(maxVolume) : 0;
 
     // calculate adjustment factor
     const scale = (maxV - minV) / (maxP - minP);
@@ -96,7 +92,7 @@ class CodeFlowController {
     const valueScaled = Math.round(Math.exp(minV + scale * (volume - minP)));
 
     // The result can be beyond the maxV if the value is beyond the maxP
-    return Math.min(valueScaled, this.maxVolume);
+    return Math.min(valueScaled, maxVolume);
   }
 
   private getSystemVolume(): number {
@@ -146,10 +142,14 @@ class CodeFlowController {
   }
 
   private updateVelocity() {
-    const { minSpeed, velocityUpdateTime } = this;
+    const { minSpeed } = this;
+
+    const { volumeUpdateInterval } = workspace.getConfiguration('codeflow');
+    const nonZeroVolumeUpdateInterval =
+      0 > volumeUpdateInterval ? 1 : volumeUpdateInterval;
 
     const velocity =
-      (this.changesSinceLastUpdate - this.speed) / velocityUpdateTime;
+      (this.changesSinceLastUpdate - this.speed) / nonZeroVolumeUpdateInterval;
 
     const newSpeed = this.speed + velocity;
     this.speed = newSpeed > minSpeed ? newSpeed : minSpeed;
@@ -175,11 +175,15 @@ class CodeFlowController {
   }
 
   private play() {
+    const { volumeUpdateInterval } = workspace.getConfiguration('codeflow');
+    const nonZeroVolumeUpdateInterval =
+      0 > volumeUpdateInterval ? 1 : volumeUpdateInterval;
+
     this.status = CodeFlowStatus.Play;
 
     this.velocityUpdateTimer = setInterval(
       this.updateVelocity.bind(this),
-      this.velocityUpdateTime * 1000,
+      nonZeroVolumeUpdateInterval * 1000,
     );
     this.textChangeListener = workspace.onDidChangeTextDocument(
       this.onTextChangeEvent,
