@@ -11,6 +11,8 @@ import {
   TextDocumentContentChangeEvent,
 } from 'vscode';
 
+import { execSync } from 'child_process';
+
 // Biorhythm?
 export function activate(ctx: ExtensionContext) {
   let controller = new CodeFlowController();
@@ -31,29 +33,24 @@ class CodeFlowController {
 
   private velocityUpdateTime = 5;
   private changesSinceLastUpdate = 0;
-  private minSpeed = 1;
+  private minSpeed = 0;
   private speed = this.minSpeed;
-  private status = CodeFlowStatus.Play;
+  private status = CodeFlowStatus.Pause;
+
+  private minVolume = 5;
+  private maxVolume = 25;
 
   constructor() {
     const { velocityUpdateTime, speed } = this;
 
     if (this.statusBarItem == null) {
       this.statusBarItem = window.createStatusBarItem(StatusBarAlignment.Left);
-      this.statusBarItem.text = `$(dashboard) ${speed}`;
-      this.statusBarItem.tooltip = 'Pause Codeflow';
-      this.statusBarItem.command = 'codeflow.pause';
+
+      this.statusBarItem.tooltip = 'Start Codeflow';
+      this.statusBarItem.command = 'codeflow.play';
+      this.statusBarItem.text = `$(dashboard) $(mute)`;
       this.statusBarItem.show();
     }
-
-    this.velocityUpdateTimer = setInterval(
-      this.updateVelocity.bind(this),
-      velocityUpdateTime * 1000,
-    );
-    this.textChangeListener = workspace.onDidChangeTextDocument(
-      this.onTextChangeEvent,
-      this,
-    );
 
     let subscriptions: Disposable[] = [];
 
@@ -83,6 +80,36 @@ class CodeFlowController {
     this.changesSinceLastUpdate += charsChanged;
   }
 
+  private volumeFromSpeed(volume) {
+    // positions
+    const minP = 0;
+    const maxP = 15;
+
+    // The result range
+    const minV = Math.log(this.minVolume);
+    const maxV = Math.log(this.maxVolume);
+
+    // calculate adjustment factor
+    const scale = (maxV - minV) / (maxP - minP);
+
+    const valueScaled = Math.round(Math.exp(minV + scale * (volume - minP)));
+
+    // The result can be beyond the maxV if the value is beyond the maxP
+    return Math.min(valueScaled, this.maxVolume);
+  }
+
+  private getSystemVolume(): number {
+    const currentVolume = execSync(
+      "osascript -e 'output volume of (get volume settings)'",
+    ).toString();
+
+    return parseInt(currentVolume, 10);
+  }
+
+  private setSystemVolume(volume: number) {
+    execSync(`osascript -e 'set volume output volume ${volume}'`);
+  }
+
   private updateVelocity() {
     const { minSpeed, velocityUpdateTime } = this;
 
@@ -94,7 +121,10 @@ class CodeFlowController {
     this.changesSinceLastUpdate = 0;
 
     const speedOneSig = Math.round(this.speed * 10) / 10;
-    this.statusBarItem.text = `$(dashboard) ${speedOneSig}`;
+    const volume = this.volumeFromSpeed(this.speed);
+
+    this.setSystemVolume(volume);
+    this.statusBarItem.text = `$(dashboard) ${speedOneSig}  $(unmute) ${volume}`;
   }
 
   private pause() {
@@ -123,7 +153,9 @@ class CodeFlowController {
 
     this.statusBarItem.tooltip = 'Pause Codeflow';
     this.statusBarItem.command = 'codeflow.pause';
-    this.statusBarItem.text = `$(dashboard) ${this.speed}`;
+
+    const volume = this.getSystemVolume();
+    this.statusBarItem.text = `$(dashboard) ${this.speed}  $(unmute) ${volume}`;
   }
 
   public dispose() {
