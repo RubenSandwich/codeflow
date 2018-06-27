@@ -35,6 +35,7 @@ class CodeFlowController {
   private changesSinceLastUpdate = 0;
   private minSpeed = 0;
   private speed = this.minSpeed;
+  private volume = 0;
   private status = CodeFlowStatus.Pause;
 
   constructor() {
@@ -93,7 +94,7 @@ class CodeFlowController {
 
     // Prevent the volume from jumping over 20% in one update
     const volumeDiff = maxVolume - minVolume;
-    const volume20Higher = Math.round(volume + volumeDiff * 0.2);
+    const volume20Higher = Math.round(this.volume + volumeDiff * 0.2);
     const newVolume = Math.min(volumeScaled, volume20Higher);
 
     // The result can be beyond the maxV if the value is beyond the maxP
@@ -161,10 +162,12 @@ class CodeFlowController {
     this.changesSinceLastUpdate = 0;
 
     const speedOneSig = Math.round(this.speed * 10) / 10;
-    const volume = this.volumeFromSpeed(this.speed);
+    this.volume = this.volumeFromSpeed(this.speed);
 
-    this.setSystemVolume(volume);
-    this.statusBarItem.text = `$(dashboard) ${speedOneSig}  $(unmute) ${volume}`;
+    this.setSystemVolume(this.volume);
+    this.statusBarItem.text = `$(dashboard) ${speedOneSig}  $(unmute) ${
+      this.volume
+    }`;
   }
 
   private pause() {
@@ -198,8 +201,10 @@ class CodeFlowController {
     this.statusBarItem.tooltip = 'Pause Codeflow';
     this.statusBarItem.command = 'codeflow.pause';
 
-    const volume = this.getSystemVolume();
-    this.statusBarItem.text = `$(dashboard) ${this.speed}  $(unmute) ${volume}`;
+    this.volume = this.getSystemVolume();
+    this.statusBarItem.text = `$(dashboard) ${this.speed}  $(unmute) ${
+      this.volume
+    }`;
   }
 
   public dispose() {
