@@ -89,10 +89,15 @@ class CodeFlowController {
     // calculate adjustment factor
     const scale = (maxV - minV) / (maxP - minP);
 
-    const valueScaled = Math.round(Math.exp(minV + scale * (volume - minP)));
+    const volumeScaled = Math.round(Math.exp(minV + scale * (volume - minP)));
+
+    // Prevent the volume from jumping over 20% in one update
+    const volumeDiff = maxVolume - minVolume;
+    const volume20Higher = Math.round(volume + volumeDiff * 0.2);
+    const newVolume = Math.min(volumeScaled, volume20Higher);
 
     // The result can be beyond the maxV if the value is beyond the maxP
-    return Math.min(valueScaled, maxVolume);
+    return Math.min(newVolume, maxVolume);
   }
 
   private getSystemVolume(): number {
