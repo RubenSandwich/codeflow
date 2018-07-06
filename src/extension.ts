@@ -111,7 +111,8 @@ class CodeFlowController {
       }
 
       case 'linux': {
-        getSystemVolumeScript = 'amixer -M get Master';
+        getSystemVolumeScript =
+          "amixer -M get Master | awk '$0~/%/{print $4; exit;}'";
         break;
       }
 
@@ -134,7 +135,7 @@ class CodeFlowController {
       }
 
       case 'linux': {
-        setSystemVolumeScript = `amixer sset 'Master' ${volume}%`;
+        setSystemVolumeScript = `amixer -M sset Master ${volume}%`;
         break;
       }
 
