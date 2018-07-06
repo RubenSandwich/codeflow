@@ -112,7 +112,7 @@ class CodeFlowController {
 
       case 'linux': {
         getSystemVolumeScript =
-          "amixer -M get Master | awk '$0~/%/{print $4; exit;}'";
+          "amixer -M get Master | awk '$0~/%/{print $4; exit;}' | tr -d '[]%'";
         break;
       }
 
