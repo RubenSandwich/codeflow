@@ -84,8 +84,9 @@ class CodeFlowController {
     const maxP = 15; // TODO: Should this be hard coded?
 
     // The result range
-    const minV = minVolume > 0 ? Math.log(minVolume) : 0;
-    const maxV = maxVolume > 0 ? Math.log(maxVolume) : 0;
+    // log 0 is -Inf, which 0 is greater then
+    const minV = Math.max(Math.log(minVolume), 0);
+    const maxV = Math.max(Math.log(maxVolume), 0);
 
     // calculate adjustment factor
     const scale = (maxV - minV) / (maxP - minP);
