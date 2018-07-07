@@ -33,6 +33,16 @@
           "type": "number",
           "default": 5,
           "description": "How many seconds to wait before updating the volume."
+        },
+        "codeflow.backgroundPauseMins": {
+          "type": "number",
+          "default": 30,
+          "description": "How many mins when VS Code is not focused to background pause."
+        },
+        "codeflow.backgroundPauseEnabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Should codeflow restart when background paused and refocused?"
         }
       }
     },

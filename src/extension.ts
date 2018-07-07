@@ -9,6 +9,7 @@ import {
   TextDocument,
   TextDocumentChangeEvent,
   TextDocumentContentChangeEvent,
+  WindowState,
 } from 'vscode';
 
 import { execSync } from 'child_process';
@@ -28,6 +29,9 @@ const enum CodeFlowStatus {
 class CodeFlowController {
   private statusBarItem: StatusBarItem;
   private disposable: Disposable;
+
+  private backgroundPaused: boolean = false;
+  private backgroundPauseTimeout: NodeJS.Timer;
 
   private velocityUpdateTimer: NodeJS.Timer;
   private textChangeListener: Disposable;
@@ -58,8 +62,44 @@ class CodeFlowController {
       commands.registerCommand('codeflow.play', this.play, this),
     );
 
+    subscriptions.push(
+      window.onDidChangeWindowState(this.onDidChangeWindowState, this),
+    );
+
     // create a combined disposable from both event subscriptions
     this.disposable = Disposable.from(...subscriptions);
+  }
+
+  private onDidChangeWindowState(newState: WindowState) {
+    const {
+      backgroundPauseMins,
+      backgroundPauseEnabled,
+    } = workspace.getConfiguration('codeflow');
+
+    if (backgroundPauseEnabled === false) {
+      return;
+    }
+
+    // 1. If playing and not focused, start background pause timer
+    // 2. If background paused and refocused, restart adjusting volume
+    // 3. If refocused and not background paused then background kill pause timer
+    if (this.status === CodeFlowStatus.Play && newState.focused === false) {
+      this.backgroundPauseTimeout = setTimeout(() => {
+        this.pause();
+        this.backgroundPaused = true;
+      }, backgroundPauseMins * 1000 * 60);
+    } else if (
+      this.status === CodeFlowStatus.Pause &&
+      newState.focused &&
+      this.backgroundPaused
+    ) {
+      this.play();
+      this.backgroundPaused = false;
+    } else if (this.status === CodeFlowStatus.Play && newState.focused) {
+      clearTimeout(this.backgroundPauseTimeout);
+      this.backgroundPauseTimeout = null;
+      this.backgroundPaused = false;
+    }
   }
 
   private onTextChangeEvent(event: TextDocumentChangeEvent) {
@@ -216,5 +256,6 @@ class CodeFlowController {
     statusBarItem.dispose();
     textChangeListener.dispose();
     clearInterval(this.velocityUpdateTimer);
+    clearTimeout(this.backgroundPauseTimeout);
   }
 }
