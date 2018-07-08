@@ -6,7 +6,6 @@ import {
   ExtensionContext,
   StatusBarAlignment,
   StatusBarItem,
-  TextDocument,
   TextDocumentChangeEvent,
   TextDocumentContentChangeEvent,
   WindowState,
@@ -50,6 +49,11 @@ class CodeFlowController {
       this.statusBarItem.command = 'codeflow.play';
       this.statusBarItem.text = `$(dashboard) $(mute)`;
       this.statusBarItem.show();
+    }
+
+    if (platform === 'win32') {
+      // chdir to run our custom volume controlling command
+      process.chdir(__dirname);
     }
 
     let subscriptions: Disposable[] = [];
@@ -144,7 +148,7 @@ class CodeFlowController {
 
   private getSystemVolume(): number {
     let getSystemVolumeScript;
-    switch (process.platform) {
+    switch (platform) {
       case 'darwin': {
         getSystemVolumeScript =
           "osascript -e 'output volume of (get volume settings)'";
@@ -154,6 +158,11 @@ class CodeFlowController {
       case 'linux': {
         getSystemVolumeScript =
           "amixer -M get Master | awk '$0~/%/{print $4; exit;}' | tr -d '[]%'";
+        break;
+      }
+
+      case 'win32': {
+        getSystemVolumeScript = `.\\winVolume.exe`;
         break;
       }
 
@@ -180,9 +189,14 @@ class CodeFlowController {
         break;
       }
 
+      case 'win32': {
+        setSystemVolumeScript = `.\\winVolume.exe ${volume}`;
+        break;
+      }
+
       default: {
         console.log('codeflow is not supported on this platform!');
-        return 0;
+        return;
       }
     }
 
