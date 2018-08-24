@@ -1,6 +1,6 @@
 # codeflow
 
-![logo](https://github.com/RubenSandwich/codeflow/blob/master/images/logo@2x.png)
+![logo](https://raw.githubusercontent.com/RubenSandwich/codeflow/master/images/logo@2x.png)
 
 Typing speed controlled volume to increase your flow
 
@@ -11,10 +11,10 @@ codeflow aims to keep you in the state of flow by tying your music's volume to y
 (Note: As a side effect this might encourage overly verbose writing. The previous sentence being an example of this as overly is unnecessary; as is this sentence.)
 
 codeflow adds a section to your status bar:  
-![codeflow off](https://github.com/RubenSandwich/codeflow/blob/master/images/off.png)
+![codeflow off](https://raw.githubusercontent.com/RubenSandwich/codeflow/master/images/off.png)
 
 Clicking on the status bar section will turn codeflow on:  
-![codeflow on](https://github.com/RubenSandwich/codeflow/blob/master/images/on.png)
+![codeflow on](https://raw.githubusercontent.com/RubenSandwich/codeflow/master/images/on.png)
 
 The number next to the volume icon is your current volume.
 

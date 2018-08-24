@@ -2,12 +2,13 @@
   "name": "codeflow",
   "displayName": "codeflow",
   "description": "Typing speed controlled volume to increase your flow",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "publisher": "rubennic",
   "license": "MIT",
   "icon": "images/logo.png",
   "galleryBanner": {
-    "color": "#FFFFFF"
+    "color": "#FFFFFF",
+    "theme": "light"
   },
   "categories": [
     "Other"
