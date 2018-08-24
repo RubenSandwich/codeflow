@@ -1,6 +1,6 @@
 # codeflow
 
-![logo](images/logo@2x.png)
+![logo](https://github.com/RubenSandwich/codeflow/blob/master/images/logo@2x.png)
 
 Typing speed controlled volume to increase your flow
 
@@ -11,10 +11,10 @@ codeflow aims to keep you in the state of flow by tying your music's volume to y
 (Note: As a side effect this might encourage overly verbose writing. The previous sentence being an example of this as overly is unnecessary; as is this sentence.)
 
 codeflow adds a section to your status bar:  
-![codeflow off](images/off.png)
+![codeflow off](https://github.com/RubenSandwich/codeflow/blob/master/images/off.png)
 
 Clicking on the status bar section will turn codeflow on:  
-![codeflow on](images/on.png)
+![codeflow on](https://github.com/RubenSandwich/codeflow/blob/master/images/on.png)
 
 The number next to the volume icon is your current volume.
 
@@ -48,7 +48,7 @@ A: It uses shell commands that can control system volume. This depends on the OS
 - Windows: `winVolume.exe`, this is a custom program because Windows has no default way to set system volume from the command line. Here is the source code for [winVolume.exe](https://gist.github.com/RubenSandwich/54a84db6765a1c355a9c91523220041b). A VS project that builds this code will be included in future release of codeflow. (In cause you want to build it by hand.)
 
 **Q: Does codeflow log key presses?**  
-A: No, codeflow only uses number of character changed in the active document to determine 'velocity' to update the volume. It never peeks at the actual characters changed. codeflow is open source and always will be, this is the code that watches characters [changed](google.com). Your privacy and security will _never_ be abused by codeflow.
+A: No, codeflow only uses number of character changed in the active document to determine 'velocity' to update the volume. It never peeks at the actual characters changed. codeflow is open source and always will be, this is the code that watches characters [changed](https://github.com/RubenSandwich/codeflow/blob/master/src/extension.ts#L108). Your privacy and security will _never_ be abused by codeflow.
 
 **Q: Why does codeflow have winVolume.exe?**  
 A: `winVolume.exe` exists because Windows has no default way to set system volume from the command line. Here is the source code for [winVolume.exe](https://gist.github.com/RubenSandwich/54a84db6765a1c355a9c91523220041b). A VS project that builds this code will be included in future release of codeflow. (In cause you want to build it by hand.)
