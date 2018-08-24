@@ -20,9 +20,11 @@ export function activate(ctx: ExtensionContext) {
   ctx.subscriptions.push(controller);
 }
 
+const DEBUG = false;
+
 const enum CodeFlowStatus {
-  Pause = 'Pause',
-  Play = 'Play',
+  Off,
+  On,
 }
 
 class CodeFlowController {
@@ -38,16 +40,13 @@ class CodeFlowController {
   private changesSinceLastUpdate = 0;
   private minSpeed = 0;
   private speed = this.minSpeed;
-  private volume = 0;
-  private status = CodeFlowStatus.Pause;
+  private status = CodeFlowStatus.Off;
 
   constructor() {
     if (this.statusBarItem == null) {
       this.statusBarItem = window.createStatusBarItem(StatusBarAlignment.Left);
 
-      this.statusBarItem.tooltip = 'Start Codeflow';
-      this.statusBarItem.command = 'codeflow.play';
-      this.statusBarItem.text = `$(dashboard) $(mute)`;
+      this.updateStatusBar();
       this.statusBarItem.show();
     }
 
@@ -59,11 +58,11 @@ class CodeFlowController {
     let subscriptions: Disposable[] = [];
 
     subscriptions.push(
-      commands.registerCommand('codeflow.pause', this.pause, this),
+      commands.registerCommand('codeflow.stop', this.stop, this),
     );
 
     subscriptions.push(
-      commands.registerCommand('codeflow.play', this.play, this),
+      commands.registerCommand('codeflow.start', this.start, this),
     );
 
     subscriptions.push(
@@ -87,19 +86,19 @@ class CodeFlowController {
     // 1. If playing and not focused, start background pause timer
     // 2. If background paused and refocused, restart adjusting volume
     // 3. If refocused and not background paused then background kill pause timer
-    if (this.status === CodeFlowStatus.Play && newState.focused === false) {
+    if (this.status === CodeFlowStatus.On && newState.focused === false) {
       this.backgroundPauseTimeout = setTimeout(() => {
-        this.pause();
+        this.stop();
         this.backgroundPaused = true;
       }, backgroundPauseMins * 1000 * 60);
     } else if (
-      this.status === CodeFlowStatus.Pause &&
+      this.status === CodeFlowStatus.Off &&
       newState.focused &&
       this.backgroundPaused
     ) {
-      this.play();
+      this.start();
       this.backgroundPaused = false;
-    } else if (this.status === CodeFlowStatus.Play && newState.focused) {
+    } else if (this.status === CodeFlowStatus.On && newState.focused) {
       clearTimeout(this.backgroundPauseTimeout);
       this.backgroundPauseTimeout = null;
       this.backgroundPaused = false;
@@ -123,26 +122,27 @@ class CodeFlowController {
   private volumeFromSpeed(volume) {
     const { minVolume, maxVolume } = workspace.getConfiguration('codeflow');
 
-    // positions
-    const minP = this.minSpeed;
-    const maxP = 15; // TODO: Should this be hard coded?
+    // speed range
+    const minS = this.minSpeed;
+    const maxS = 15; // TODO: Should this be hard coded?
 
-    // The result range
+    // volume range
     // log 0 is -Inf, which 0 is greater then
     const minV = Math.max(Math.log(minVolume), 0);
     const maxV = Math.max(Math.log(maxVolume), 0);
 
     // calculate adjustment factor
-    const scale = (maxV - minV) / (maxP - minP);
+    const scale = (maxV - minV) / (maxS - minS);
 
-    const volumeScaled = Math.round(Math.exp(minV + scale * (volume - minP)));
+    const volumeScaled = Math.round(Math.exp(minV + scale * (volume - minS)));
 
     // Prevent the volume from jumping over 20% in one update
     const volumeDiff = maxVolume - minVolume;
-    const volume20Higher = Math.round(this.volume + volumeDiff * 0.2);
+    const currentVolume = this.getSystemVolume();
+    const volume20Higher = Math.round(currentVolume + volumeDiff * 0.2);
     const newVolume = Math.min(volumeScaled, volume20Higher);
 
-    // The result can be beyond the maxV if the value is beyond the maxP
+    // The result can be beyond the maxV if the value is beyond the maxS
     return Math.min(newVolume, maxVolume);
   }
 
@@ -207,43 +207,36 @@ class CodeFlowController {
     const { minSpeed } = this;
 
     const { volumeUpdateInterval } = workspace.getConfiguration('codeflow');
-    const nonZeroVolumeUpdateInterval =
-      0 > volumeUpdateInterval ? 1 : volumeUpdateInterval;
+    const nonZeroVolumeUpdateInterval = Math.max(volumeUpdateInterval, 1);
 
     const velocity =
       (this.changesSinceLastUpdate - this.speed) / nonZeroVolumeUpdateInterval;
 
     const newSpeed = this.speed + velocity;
-    this.speed = newSpeed > minSpeed ? newSpeed : minSpeed;
+    this.speed = Math.max(newSpeed, minSpeed);
     this.changesSinceLastUpdate = 0;
 
-    const speedOneSig = Math.round(this.speed * 10) / 10;
-    this.volume = this.volumeFromSpeed(this.speed);
+    const volume = this.volumeFromSpeed(this.speed);
 
-    this.setSystemVolume(this.volume);
-    this.statusBarItem.text = `$(dashboard) ${speedOneSig}  $(unmute) ${
-      this.volume
-    }`;
+    this.setSystemVolume(volume);
+    this.updateStatusBar(volume);
   }
 
-  private pause() {
-    this.status = CodeFlowStatus.Pause;
+  private stop() {
+    this.status = CodeFlowStatus.Off;
 
     clearInterval(this.velocityUpdateTimer);
     this.textChangeListener.dispose();
 
     this.speed = this.minSpeed;
-    this.statusBarItem.tooltip = 'Start Codeflow';
-    this.statusBarItem.command = 'codeflow.play';
-    this.statusBarItem.text = `$(dashboard) $(mute)`;
+    this.updateStatusBar();
   }
 
-  private play() {
+  private start() {
     const { volumeUpdateInterval } = workspace.getConfiguration('codeflow');
-    const nonZeroVolumeUpdateInterval =
-      0 > volumeUpdateInterval ? 1 : volumeUpdateInterval;
+    const nonZeroVolumeUpdateInterval = Math.max(volumeUpdateInterval, 1);
 
-    this.status = CodeFlowStatus.Play;
+    this.status = CodeFlowStatus.On;
 
     this.velocityUpdateTimer = setInterval(
       this.updateVelocity.bind(this),
@@ -254,13 +247,29 @@ class CodeFlowController {
       this,
     );
 
-    this.statusBarItem.tooltip = 'Pause Codeflow';
-    this.statusBarItem.command = 'codeflow.pause';
+    this.updateStatusBar(this.getSystemVolume());
+  }
 
-    this.volume = this.getSystemVolume();
-    this.statusBarItem.text = `$(dashboard) ${this.speed}  $(unmute) ${
-      this.volume
-    }`;
+  private updateStatusBar(volume?: number) {
+    let statusBarStartText = `$(dashboard)`;
+    if (DEBUG) {
+      const speedOneSig = Math.round(this.speed * 10) / 10;
+      statusBarStartText = `$(dashboard) ${speedOneSig} `;
+    }
+
+    let statusBarEndText = `$(mute)`;
+    if (this.status === CodeFlowStatus.On) {
+      this.statusBarItem.tooltip = 'Stop codeflow';
+      this.statusBarItem.command = 'codeflow.stop';
+
+      const newVolume = volume == null ? this.getSystemVolume() : volume;
+      statusBarEndText = `$(unmute) ${newVolume}`;
+    } else if (this.status === CodeFlowStatus.Off) {
+      this.statusBarItem.tooltip = 'Start codeflow';
+      this.statusBarItem.command = 'codeflow.start';
+    }
+
+    this.statusBarItem.text = `${statusBarStartText} ${statusBarEndText}`;
   }
 
   public dispose() {

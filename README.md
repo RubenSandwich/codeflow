@@ -1,65 +1,54 @@
-# codeflow README
+# codeflow
 
-Codeflow is a bio rhythm extention.
+![logo](images/logo@2x.png)
 
-## Features
+Typing speed controlled volume to increase your flow
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+## Usage
 
-For example if there is an image subfolder under your extension project workspace:
+codeflow aims to keep you in the state of flow by tying your music's volume to your typing speed. So if your really in the state of flow typing lots of characters hopefully the sound of your music's volume increasing will keep you in that state of flow.
 
-\!\[feature X\]\(images/feature-x.png\)
+(Note: As a side effect this might encourage overly verbose writing. The previous sentence being an example of this as overly is unnecessary; as is this sentence.)
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+codeflow adds a section to your status bar:  
+![codeflow off](images/off.png)
 
-## Requirements
+Clicking on the status bar section will turn codeflow on:  
+![codeflow on](images/on.png)
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+The number next to the volume icon is your current volume.
 
-## Extension Settings
+Some of codeflow's other little details:
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+- Turns off if the code editor is not focused for 20 minutes and resumes when the code editor is focused again, because everyone takes YouTube breaks
+- Increases volume faster when deleting compared to adding characters
 
-For example:
+## Actions
 
-This extension contributes the following settings:
+codeflow defaults to off. To turn it on you must fire the `Start codeflow` action.
 
-- `myExtension.enable`: enable/disable this extension
-- `myExtension.thing`: set to `blah` to do something
+- `Start codeflow`: Start codeflow for the current workspace
+- `Stop codeflow`: Stop codeflow for the current workspace
 
-## Known Issues
+## Settings
 
-Calling out known issues can help limit users opening duplicate issues against your extension.
+- `codeflow.minVolume`: The minimum volume codeflow can set, defaults to 5%.
+- `codeflow.maxVolume`: The maximum volume codeflow can set, defaults to 20%.
+- `codeflow.volumeUpdateInterval`: How many seconds to wait before updating the volume, defaults to 5 seconds.
+- `codeflow.backgroundPauseEnabled`: Should codeflow restart when background paused and refocused? Defaults to true.
+- `codeflow.backgroundPauseMins`: How many minutes to wait while VS Code is not focused to background pause, defaults to 20 minutes.
 
-## Release Notes
+## FAQ
 
-Users appreciate release notes as you update your extension.
+**Q: How does codeflow change system volume?**  
+A: It uses shell commands that can control system volume. This depends on the OS but here are the commands used:
 
-### 1.0.0
+- Linux: `amixer`
+- OS X: AppleScript run with `osascript`
+- Windows: `winVolume.exe`, this is a custom program because Windows has no default way to set system volume from the command line. Here is the source code for [winVolume.exe](https://gist.github.com/RubenSandwich/54a84db6765a1c355a9c91523220041b). A VS project that builds this code will be included in future release of codeflow. (In cause you want to build it by hand.)
 
-Initial release of ...
+**Q: Does codeflow log key presses?**  
+A: No, codeflow only uses number of character changed in the active document to determine 'velocity' to update the volume. It never peeks at the actual characters changed. codeflow is open source and always will be, this is the code that watches characters [changed](google.com). Your privacy and security will _never_ be abused by codeflow.
 
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
-
----
-
-## Working with Markdown
-
-**Note:** You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-- Split the editor (`Cmd+\` on OSX or `Ctrl+\` on Windows and Linux)
-- Toggle preview (`Shift+CMD+V` on OSX or `Shift+Ctrl+V` on Windows and Linux)
-- Press `Ctrl+Space` (Windows, Linux) or `Cmd+Space` (OSX) to see a list of Markdown snippets
-
-### For more information
-
-- [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-- [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+**Q: Why does codeflow have winVolume.exe?**  
+A: `winVolume.exe` exists because Windows has no default way to set system volume from the command line. Here is the source code for [winVolume.exe](https://gist.github.com/RubenSandwich/54a84db6765a1c355a9c91523220041b). A VS project that builds this code will be included in future release of codeflow. (In cause you want to build it by hand.)
