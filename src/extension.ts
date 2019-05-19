@@ -9,12 +9,13 @@ import {
   TextDocumentChangeEvent,
   TextDocumentContentChangeEvent,
   WindowState,
+  debug,
+  tasks,
 } from 'vscode';
 
 import { execSync } from 'child_process';
 import { platform } from 'process';
 
-// Biorhythm?
 export function activate(ctx: ExtensionContext) {
   let controller = new CodeFlowController();
   ctx.subscriptions.push(controller);
@@ -35,12 +36,22 @@ class CodeFlowController {
   private backgroundPauseTimeout: NodeJS.Timer;
 
   private velocityUpdateTimer: NodeJS.Timer;
+
   private textChangeListener: Disposable;
+  // Used for pausing
+  private startTaskListener: Disposable;
+  private finishedTaskListener: Disposable;
+  private startDebugListener: Disposable;
+  private finishedDebugListener: Disposable;
 
   private changesSinceLastUpdate = 0;
   private minSpeed = 0;
   private speed = this.minSpeed;
   private status = CodeFlowStatus.Off;
+
+  private paused = false;
+  private minVolume = 0;
+  private maxVolume = 0;
 
   constructor() {
     if (this.statusBarItem == null) {
@@ -120,16 +131,14 @@ class CodeFlowController {
   }
 
   private volumeFromSpeed(volume) {
-    const { minVolume, maxVolume } = workspace.getConfiguration('codeflow');
-
     // speed range
     const minS = this.minSpeed;
     const maxS = 15; // TODO: Should this be hard coded?
 
     // volume range
     // log 0 is -Inf, which 0 is greater then
-    const minV = Math.max(Math.log(minVolume), 0);
-    const maxV = Math.max(Math.log(maxVolume), 0);
+    const minV = Math.max(Math.log(this.minVolume), 0);
+    const maxV = Math.max(Math.log(this.maxVolume), 0);
 
     // calculate adjustment factor
     const scale = (maxV - minV) / (maxS - minS);
@@ -137,13 +146,13 @@ class CodeFlowController {
     const volumeScaled = Math.round(Math.exp(minV + scale * (volume - minS)));
 
     // Prevent the volume from jumping over 20% in one update
-    const volumeDiff = maxVolume - minVolume;
+    const volumeDiff = this.maxVolume - this.minVolume;
     const currentVolume = this.getSystemVolume();
     const volume20Higher = Math.round(currentVolume + volumeDiff * 0.2);
     const newVolume = Math.min(volumeScaled, volume20Higher);
 
     // The result can be beyond the maxV if the value is beyond the maxS
-    return Math.min(newVolume, maxVolume);
+    return Math.min(newVolume, this.maxVolume);
   }
 
   private getSystemVolume(): number {
@@ -206,6 +215,10 @@ class CodeFlowController {
   private updateVelocity() {
     const { minSpeed } = this;
 
+    if (this.paused) {
+      return;
+    }
+
     const { volumeUpdateInterval } = workspace.getConfiguration('codeflow');
     const nonZeroVolumeUpdateInterval = Math.max(volumeUpdateInterval, 1);
 
@@ -227,14 +240,24 @@ class CodeFlowController {
 
     clearInterval(this.velocityUpdateTimer);
     this.textChangeListener.dispose();
+    this.startTaskListener.dispose();
+    this.finishedTaskListener.dispose();
+    this.startDebugListener.dispose();
+    this.finishedDebugListener.dispose();
 
     this.speed = this.minSpeed;
     this.updateStatusBar();
   }
 
   private start() {
-    const { volumeUpdateInterval } = workspace.getConfiguration('codeflow');
+    const { volumeUpdateInterval, volumeRange } = workspace.getConfiguration(
+      'codeflow',
+    );
     const nonZeroVolumeUpdateInterval = Math.max(volumeUpdateInterval, 1);
+
+    const systemVolume = this.getSystemVolume();
+    this.minVolume = Math.max(systemVolume - volumeRange, 0);
+    this.maxVolume = Math.min(systemVolume + volumeRange, 100);
 
     this.status = CodeFlowStatus.On;
 
@@ -247,7 +270,30 @@ class CodeFlowController {
       this,
     );
 
+    this.startTaskListener = tasks.onDidStartTask(this.pauseVolumeChange, this);
+    this.startDebugListener = debug.onDidStartDebugSession(
+      this.pauseVolumeChange,
+      this,
+    );
+
+    this.finishedTaskListener = tasks.onDidEndTask(
+      this.unpauseVolumeChange,
+      this,
+    );
+    this.finishedDebugListener = debug.onDidTerminateDebugSession(
+      this.unpauseVolumeChange,
+      this,
+    );
+
     this.updateStatusBar(this.getSystemVolume());
+  }
+
+  private pauseVolumeChange() {
+    this.paused = true;
+  }
+
+  private unpauseVolumeChange() {
+    this.paused = false;
   }
 
   private updateStatusBar(volume?: number) {
@@ -273,11 +319,25 @@ class CodeFlowController {
   }
 
   public dispose() {
-    const { disposable, statusBarItem, textChangeListener } = this;
+    const {
+      disposable,
+      statusBarItem,
+      textChangeListener,
+      startTaskListener,
+      finishedTaskListener,
+      startDebugListener,
+      finishedDebugListener,
+    } = this;
 
     disposable.dispose();
     statusBarItem.dispose();
+
     textChangeListener.dispose();
+    startTaskListener.dispose();
+    finishedTaskListener.dispose();
+    startDebugListener.dispose();
+    finishedDebugListener.dispose();
+
     clearInterval(this.velocityUpdateTimer);
     clearTimeout(this.backgroundPauseTimeout);
   }

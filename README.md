@@ -32,11 +32,10 @@ codeflow defaults to off. To turn it on you must fire the `Start codeflow` actio
 
 ## Settings
 
-- `codeflow.minVolume`: The minimum volume codeflow can set, defaults to 5%.
-- `codeflow.maxVolume`: The maximum volume codeflow can set, defaults to 20%.
-- `codeflow.volumeUpdateInterval`: How many seconds to wait before updating the volume, defaults to 5 seconds.
+- `codeflow.volumeRange`: From your start volume how much higher and lower codeflow can change the volume
+- `codeflow.volumeUpdateInterval`: How many seconds to wait before updating the volume, defaults to 10 seconds.
 - `codeflow.backgroundPauseEnabled`: Should codeflow restart when background paused and refocused? Defaults to true.
-- `codeflow.backgroundPauseMins`: How many minutes to wait while VS Code is not focused to background pause, defaults to 20 minutes.
+- `codeflow.backgroundPauseMins`: How many minutes to wait while VS Code is not focused to background pause, defaults to 5 minutes.
 
 ## FAQ
 
